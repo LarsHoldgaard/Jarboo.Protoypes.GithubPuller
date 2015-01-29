@@ -1,0 +1,30 @@
+﻿@model Jarboo.Protoypes.GithubPuller.Models.RepositoriesViewModel
+
+<div class="row">
+    <div class="col-lg-12">
+        <h2>Repositories</h2>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Url</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Repositories)
+                    {
+                        <tr>
+                            <td>@item.Name</td>
+                            <td><a href="@item.GitUrl">@item.GitUrl</a></td>
+                            <td>
+                                <a class="btn btn-info" href="@Url.Action("Detail", new { id = item.Id })">Detail</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
