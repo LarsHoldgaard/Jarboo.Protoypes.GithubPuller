@@ -2,3 +2,4 @@
 /src/Jarboo.Protoypes.GithubPuller/bin
 src/packages
 src/*.suo
+src/Jarboo.Protoypes.GithubPuller/Logs/*

@@ -64,11 +64,6 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 var path = Path.Combine(basePath, DateTime.Now.Ticks + repositoryName);
 
-                if (Directory.Exists(path))
-                {
-                    Directory.Delete(path, true);
-                }
-
                 var repositoryPath = Repository.Clone(repo.CloneUrl, path, new CloneOptions { BranchName = name, Checkout = true });
                 
                 var solutionFile = FindSolutionFile(repositoryPath);
@@ -77,9 +72,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 string outputPath = Server.MapPath(Path.Combine(ConfigurationManager.AppSettings["BuildPath"], Guid.NewGuid().ToString()));
                 string solutionName = solutionFile.Replace(".sln", ""); //extracting solution name
-                string packagePath = Path.Combine(outputPath, "_PublishedWebsites", solutionName);
-
-                _logger.Debug("Package path: {0}", packagePath);
+                
 
                 if (!Directory.Exists(outputPath))
                 {
@@ -87,6 +80,9 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 }
 
                 Build(solutionFile, outputPath, null);
+
+                string packagePath = Path.Combine(outputPath, "_PublishedWebsites", solutionName);
+                _logger.Debug("Package path: {0}", packagePath);
 
                 CreateApplication(packagePath, repositoryName + "-" + name, ConfigurationManager.AppSettings["DeployApplication"]);
             }
@@ -113,30 +109,6 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             return Path.Combine(solutionFile.DirectoryName, solutionFile.Name);
         }
 
-        private void CreateApplication(string path, string name, string root)
-        {
-            name = name.StartsWith("/") ? name : "/" + name;
-            using (var server = new ServerManager())
-            {
-                Site site = server.Sites.First(w => w.Name == root);
-
-                var existingApplications = site.Applications.Where(a => a.Path == name);
-
-                //removing sites with this name if they exist
-                foreach (var existing in existingApplications)
-                {
-                    site.Applications.Remove(existing);
-                }
-
-                server.CommitChanges();
-                
-                site.Applications.Add(name, path);
-
-                server.CommitChanges();
-
-            }
-        }
-
         private void Build(string solutionPath, string outputPath, string[] targets, string configuration = "Release", string platform = "Any CPU")
         {
             _logger.Debug("Start building");
@@ -147,6 +119,11 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             _logger.Debug("Restoring packages");
             NuGetPlus.SolutionManagement.RestorePackages(solutionPath);
             _logger.Debug("Packages restored");
+
+            if (Directory.Exists(outputPath))
+            {
+                Directory.Delete(outputPath, true);
+            }
 
             var projectCollection = new ProjectCollection();
 
@@ -176,6 +153,30 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                     _logger.Debug(res.Value.Exception);
 
                 }
+            }
+        }
+
+        private void CreateApplication(string path, string name, string root)
+        {
+            name = name.StartsWith("/") ? name : "/" + name;
+            using (var server = new ServerManager())
+            {
+                Site site = server.Sites.First(w => w.Name == root);
+
+                var existingApplications = site.Applications.Where(a => a.Path == name);
+
+                //removing sites with this name if they exist
+                foreach (var existing in existingApplications)
+                {
+                    site.Applications.Remove(existing);
+                }
+
+                server.CommitChanges();
+
+                site.Applications.Add(name, path);
+
+                server.CommitChanges();
+
             }
         }
     }
