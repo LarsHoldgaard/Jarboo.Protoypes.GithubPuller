@@ -57,7 +57,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
         public async Task<ActionResult> Branch(string owner, string repositoryName, string name)
         {
             bool result = true;
-            var basePath = ConfigurationManager.AppSettings["DownloadPath"];
+            var basePath = Server.MapPath(ConfigurationManager.AppSettings["DownloadPath"]);
             try
             {
                 var repo = await _gitHubClient.Value.Repository.Get(owner, repositoryName);
