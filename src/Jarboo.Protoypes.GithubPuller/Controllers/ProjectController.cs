@@ -117,6 +117,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 targets = new[] { "Build" };
             }
             _logger.Debug("Restoring packages");
+            _logger.Debug("Solution path: {0}", solutionPath);
             NuGetPlus.SolutionManagement.RestorePackages(solutionPath);
             _logger.Debug("Packages restored");
 
