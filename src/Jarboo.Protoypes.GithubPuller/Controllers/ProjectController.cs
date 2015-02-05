@@ -67,25 +67,20 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 var repositoryPath = Repository.Clone(repo.CloneUrl, path, new CloneOptions { BranchName = name, Checkout = true });
                 
-                var solutionFile = FindSolutionFile(repositoryPath);
+                var solutionFilePath = FindSolutionPath(repositoryPath);
 
-                _logger.Debug("Solution file: {0}", solutionFile);
+                _logger.Debug("Solution file: {0}", solutionFilePath);
 
                 string outputPath = Server.MapPath(Path.Combine(ConfigurationManager.AppSettings["BuildPath"], Guid.NewGuid().ToString()));
-                string solutionName = solutionFile.Replace(".sln", ""); //extracting solution name
+                string solutionName = Path.GetFileName(solutionFilePath); //extracting solution name
+                _logger.Debug("Solution file name: {0}", solutionName);
                 
-
-                if (!Directory.Exists(outputPath))
-                {
-                    Directory.CreateDirectory(outputPath);
-                }
-
-                Build(solutionFile, outputPath, null);
+                Build(solutionFilePath, outputPath, null);
 
                 string packagePath = Path.Combine(outputPath, "_PublishedWebsites", solutionName);
                 _logger.Debug("Package path: {0}", packagePath);
 
-                CreateApplication(packagePath, repositoryName + "-" + name, ConfigurationManager.AppSettings["DeployApplication"]);
+                CreateApplication(packagePath, repositoryName + "." + name, ConfigurationManager.AppSettings["DeployApplication"]);
             }
             catch (Exception e)
             {
@@ -96,7 +91,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             return View(result);
         }
 
-        private string FindSolutionFile(string path)
+        private string FindSolutionPath(string path)
         {
             var parent = Directory.GetParent(path).Parent;
             FileInfo[] files = parent.GetFiles("*.sln", SearchOption.AllDirectories);
@@ -135,7 +130,6 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             {
                 _logger.Debug("Package {0}, id: {1}, version {2}", package.Item1.Item, package.Item2.Id, package.Item2.Version);
                 RepositoryManagement.RestorePackage a = new NuGetPlus.RepositoryManagement.RestorePackage(package.Item2.Id, package.Item2.Version);
-                
             }
 
             _logger.Debug("Packages restored");
@@ -143,6 +137,11 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             if (Directory.Exists(outputPath))
             {
                 Directory.Delete(outputPath, true);
+            }
+
+            if (!Directory.Exists(outputPath))
+            {
+                Directory.CreateDirectory(outputPath);
             }
 
             var projectCollection = new ProjectCollection();
@@ -194,7 +193,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 server.CommitChanges();
 
-                _logger.Debug("Adding application {0}", name);
+                _logger.Debug("Adding application {0}, path: {1}", name, path);
                 site.Applications.Add(name, path);
 
                 server.CommitChanges();
