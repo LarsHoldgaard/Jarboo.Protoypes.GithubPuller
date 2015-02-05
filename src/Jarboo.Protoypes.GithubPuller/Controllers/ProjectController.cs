@@ -12,6 +12,7 @@ using Microsoft.Build.Evaluation;
 using Microsoft.Build.Execution;
 using Microsoft.Web.Administration;
 using NLog;
+using NuGetPlus;
 using Octokit;
 using Repository = LibGit2Sharp.Repository;
 
@@ -118,7 +119,16 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             }
             _logger.Debug("Restoring packages");
             _logger.Debug("Solution path: {0}", solutionPath);
-            NuGetPlus.SolutionManagement.RestorePackages(solutionPath);
+            var p = NuGetPlus.SolutionManagement.GetRestorePackages(solutionPath);
+
+            foreach (var package in p)
+            {
+                _logger.Debug("Package {0}, id: {1}, version {2}", package.Item1.Item, package.Item2.Id, package.Item2.Version);
+                RepositoryManagement.RestorePackage a = new NuGetPlus.RepositoryManagement.RestorePackage(package.Item2.Id, package.Item2.Version);
+                
+            }
+
+//            NuGetPlus.SolutionManagement.RestorePackages(solutionPath);
             _logger.Debug("Packages restored");
 
             if (Directory.Exists(outputPath))
