@@ -125,6 +125,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 _logger.Debug(e);
             }
 
+            _logger.Debug("Get restore packages");
             var packages = NuGetPlus.SolutionManagement.GetRestorePackages(solutionPath);
             foreach (var package in packages)
             {
