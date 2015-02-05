@@ -72,7 +72,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 _logger.Debug("Solution file: {0}", solutionFilePath);
 
                 string outputPath = Server.MapPath(Path.Combine(ConfigurationManager.AppSettings["BuildPath"], Guid.NewGuid().ToString()));
-                string solutionName = Path.GetFileName(solutionFilePath); //extracting solution name
+                string solutionName = Path.GetFileNameWithoutExtension(solutionFilePath); //extracting solution name
                 _logger.Debug("Solution file name: {0}", solutionName);
                 
                 Build(solutionFilePath, outputPath, null);
