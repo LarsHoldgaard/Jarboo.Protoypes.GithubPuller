@@ -191,7 +191,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                     site.Applications.Remove(existing);
                 }
 
-                server.CommitChanges();
+//                server.CommitChanges();
 
                 _logger.Debug("Adding application {0}, path: {1}", name, path);
                 site.Applications.Add(name, path);
