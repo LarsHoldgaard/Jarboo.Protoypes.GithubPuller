@@ -47,7 +47,10 @@
     <Reference Include="DataAnnotationsExtensions.ClientValidation">
       <HintPath>..\packages\DataAnnotationsExtensions.MVC3.1.1.0.0\lib\NETFramework40\DataAnnotationsExtensions.ClientValidation.dll</HintPath>
     </Reference>
-    <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>Assemblies\FSharp.Core.dll</HintPath>
+    </Reference>
     <Reference Include="LibGit2Sharp">
       <HintPath>..\packages\LibGit2Sharp.0.21.0.176\lib\net40\LibGit2Sharp.dll</HintPath>
     </Reference>
@@ -214,6 +217,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Assemblies\FSharp.Core.dll" />
     <Content Include="Assemblies\Microsoft.Web.Administration.dll" />
     <Content Include="Build\_dummy.txt" />
     <Content Include="Content\site.css" />
