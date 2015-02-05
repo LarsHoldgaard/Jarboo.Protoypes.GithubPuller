@@ -119,16 +119,25 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             }
             _logger.Debug("Restoring packages");
             _logger.Debug("Solution path: {0}", solutionPath);
-            var p = NuGetPlus.SolutionManagement.GetRestorePackages(solutionPath);
 
-            foreach (var package in p)
+            try
+            {
+                NuGetPlus.SolutionManagement.RestorePackages(solutionPath);
+            }
+            catch (Exception e)
+            {
+                _logger.Debug("Error when running restore command");
+                _logger.Debug(e);
+            }
+
+            var packages = NuGetPlus.SolutionManagement.GetRestorePackages(solutionPath);
+            foreach (var package in packages)
             {
                 _logger.Debug("Package {0}, id: {1}, version {2}", package.Item1.Item, package.Item2.Id, package.Item2.Version);
                 RepositoryManagement.RestorePackage a = new NuGetPlus.RepositoryManagement.RestorePackage(package.Item2.Id, package.Item2.Version);
                 
             }
 
-//            NuGetPlus.SolutionManagement.RestorePackages(solutionPath);
             _logger.Debug("Packages restored");
 
             if (Directory.Exists(outputPath))
@@ -162,7 +171,6 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                     _logger.Debug("REsult code: {0}", res.Value.ResultCode);
                     _logger.Debug("Result exception: ");
                     _logger.Debug(res.Value.Exception);
-
                 }
             }
         }
@@ -172,9 +180,11 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             name = name.StartsWith("/") ? name : "/" + name;
             using (var server = new ServerManager())
             {
+                _logger.Debug("Getting site root: {0}", root);
                 Site site = server.Sites.First(w => w.Name == root);
 
-                var existingApplications = site.Applications.Where(a => a.Path == name);
+                var existingApplications = site.Applications.Where(a => a.Path == name).ToList();
+                _logger.Debug("Existing applications for {0}: {1}", name, existingApplications.Count());
 
                 //removing sites with this name if they exist
                 foreach (var existing in existingApplications)
@@ -184,10 +194,12 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 server.CommitChanges();
 
+                _logger.Debug("Adding application {0}", name);
                 site.Applications.Add(name, path);
 
                 server.CommitChanges();
 
+                _logger.Debug("Application added: {0}", name);
             }
         }
     }
