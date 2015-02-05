@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
+﻿using System.Collections.Generic;
+using Octokit;
 
 namespace Jarboo.Protoypes.GithubPuller.Models
 {
     public class RepositoriesViewModel
     {
-        public List<RepositoryViewModel> Repositories { get; set; }
+        public IList<Repository> Repositories { get; set; }
     }
 }

@@ -1,75 +1,177 @@
-﻿using Jarboo.Protoypes.GithubPuller.Models;
-using Octokit;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Web;
 using System.Web.Mvc;
+using Jarboo.Protoypes.GithubPuller.Attributes;
+using Jarboo.Protoypes.GithubPuller.Models;
+using LibGit2Sharp;
+using Microsoft.Build.Evaluation;
+using Microsoft.Build.Execution;
+using Microsoft.Web.Administration;
+using NLog;
+using Octokit;
+using Repository = LibGit2Sharp.Repository;
 
 namespace Jarboo.Protoypes.GithubPuller.Controllers
 {
-    public class ProjectController : AuthenticationController
+    [CustomAuthorize]
+    public class ProjectController : BaseController
     {
+        private readonly Lazy<GitHubClient> _gitHubClient;
+        readonly Logger _logger = LogManager.GetCurrentClassLogger();
+
+        public ProjectController()
+        {
+            _gitHubClient = new Lazy<GitHubClient>(() => new GitHubClient(CurrentConnection));
+        }
+
         public async Task<ActionResult> Index()
         {
-            var gitClient = new GitHubClient(this.CurrentConnection);
-            ApiConnection apiConnection = new ApiConnection(this.CurrentConnection);
-            var repositories = await gitClient.Repository.GetAllForCurrent();
-            var model = new RepositoriesViewModel();
-            model.Repositories = repositories.Select(Create).ToList();
+            var repositories = await _gitHubClient.Value.Repository.GetAllForCurrent();
+            var model = new RepositoriesViewModel
+            {
+                Repositories = repositories.ToList()
+            };
             return View(model);
         }
 
         public async Task<ActionResult> Detail(string owner, string name)
         {
-            var gitClient = new GitHubClient(this.CurrentConnection);
-            ApiConnection apiConnection = new ApiConnection(this.CurrentConnection);
-            var client = new RepositoriesClient(apiConnection);
-            var repository = await gitClient.Repository.Get(owner, name);
-            var model = Create(repository);
-            var branches = await gitClient.Repository.GetAllBranches(owner, name);
+            var repositoryTask = _gitHubClient.Value.Repository.Get(owner, name);
+            var branchesTask = _gitHubClient.Value.Repository.GetAllBranches(owner, name);
+
+            await Task.WhenAll(repositoryTask, branchesTask);
+
+            var model = new DetailViewModel
+            {
+                Branches = branchesTask.Result.ToList(),
+                Repository = repositoryTask.Result
+            };
+
             return View(model);
         }
 
-        private RepositoryViewModel Create(Repository repo)
+        public async Task<ActionResult> Branch(string owner, string repositoryName, string name)
         {
-            var model = new RepositoryViewModel();
-            model.CloneUrl = repo.CloneUrl;
-            model.CreatedAt = repo.CreatedAt;
-            model.DefaultBranch = repo.DefaultBranch;
-            model.Description = repo.Description;
-            model.Fork = repo.Fork;
-            model.ForksCount = repo.ForksCount;
-            model.FullName = repo.FullName;
-            model.GitUrl = repo.GitUrl;
-            model.HasDownloads = repo.HasDownloads;
-            model.HasIssues = repo.HasIssues;
-            model.HasWiki = repo.HasWiki;
-            model.Homepage = repo.Homepage;
-            model.HtmlUrl = repo.HtmlUrl;
-            model.Id = repo.Id;
-            model.Language = repo.Language;
-            model.MirrorUrl = repo.MirrorUrl;
-            model.Name = repo.Name;
-            model.OpenIssuesCount = repo.OpenIssuesCount;
-            model.Private = repo.Private;
-            model.PushedAt = repo.PushedAt;
-            model.SshUrl = repo.SshUrl;
-            model.StargazersCount = repo.StargazersCount;
-            model.SubscribersCount = repo.SubscribersCount;
-            model.SvnUrl = repo.SvnUrl;
-            model.UpdatedAt = repo.UpdatedAt;
-            model.Url = repo.Url;
-            model.WatchersCount = repo.WatchersCount;
-            model.Owner = new UserViewModel()
+            bool result = true;
+            var basePath = ConfigurationManager.AppSettings["DownloadPath"];
+            try
             {
-                Id = repo.Owner.Id,
-                Name = repo.Owner.Name,
-                Login = repo.Owner.Login,
-                Email = repo.Owner.Email;
+                var repo = await _gitHubClient.Value.Repository.Get(owner, repositoryName);
+
+                var path = Path.Combine(basePath, DateTime.Now.Ticks + repositoryName);
+
+                if (Directory.Exists(path))
+                {
+                    Directory.Delete(path, true);
+                }
+
+                var repositoryPath = Repository.Clone(repo.CloneUrl, path, new CloneOptions { BranchName = name, Checkout = true });
+                
+                var solutionFile = FindSolutionFile(repositoryPath);
+
+                string outputPath = Server.MapPath(Path.Combine(ConfigurationManager.AppSettings["BuildPath"], Guid.NewGuid().ToString()));
+                string solutionName = solutionFile.Replace(".sln", ""); //extracting solution name
+                string packagePath = Path.Combine(outputPath, "_PublishedWebsites", solutionName);
+
+                if (!Directory.Exists(outputPath))
+                {
+                    Directory.CreateDirectory(outputPath);
+                }
+
+                Build(solutionFile, outputPath, null);
+
+                CreateApplication(packagePath, repositoryName + "-" + name, ConfigurationManager.AppSettings["DeployApplication"]);
+            }
+            catch (Exception)
+            {
+                result = false;
+            }
+
+            return View(result);
+        }
+
+        private string FindSolutionFile(string path)
+        {
+            var parent = Directory.GetParent(path).Parent;
+            FileInfo[] files = parent.GetFiles("*.sln", SearchOption.AllDirectories);
+
+            if (!files.Any())
+            {
+                return null;
+            }
+
+            var solutionFile = files.First();
+            return Path.Combine(solutionFile.DirectoryName, solutionFile.Name);
+        }
+
+        private void CreateApplication(string path, string name, string root)
+        {
+            name = name.StartsWith("/") ? name : "/" + name;
+            using (var server = new ServerManager())
+            {
+                Site site = server.Sites.First(w => w.Name == root);
+
+                var existingApplications = site.Applications.Where(a => a.Path == name);
+
+                //removing sites with this name if they exist
+                foreach (var existing in existingApplications)
+                {
+                    site.Applications.Remove(existing);
+                }
+
+                server.CommitChanges();
+                
+                site.Applications.Add(name, path);
+
+                server.CommitChanges();
+
+            }
+        }
+
+        private void Build(string solutionPath, string outputPath, string[] targets, string configuration = "Release", string platform = "Any CPU")
+        {
+            _logger.Debug("Start building");
+            if (targets == null || !targets.Any())
+            {
+                targets = new[] { "Build" };
+            }
+            _logger.Debug("Restoring packages");
+            NuGetPlus.SolutionManagement.RestorePackages(solutionPath);
+            _logger.Debug("Packages restored");
+
+            var projectCollection = new ProjectCollection();
+
+            var properties = new Dictionary<string, string> 
+            { 
+                { "Configuration", configuration }, 
+                { "Platform", platform }, 
+                {"DeployOnBuild", "true"},
+                {"OutputPath", outputPath}
             };
-            return model;
+            var buildRequestData = new BuildRequestData(solutionPath, properties, null, targets, null);
+
+            var buildParameters = new BuildParameters(projectCollection);
+
+            var buildRequest = BuildManager.DefaultBuildManager.Build(buildParameters, buildRequestData);
+            var isSuccess = buildRequest.OverallResult == BuildResultCode.Success;
+
+            _logger.Debug("Build succes: {0}", isSuccess);
+
+            if (!isSuccess)
+            {
+                foreach (var res in buildRequest.ResultsByTarget)
+                {
+                    _logger.Debug("Result key: {0}", res.Key);
+                    _logger.Debug("REsult code: {0}", res.Value.ResultCode);
+                    _logger.Debug("Result exception: ");
+                    _logger.Debug(res.Value.Exception);
+
+                }
+            }
         }
     }
 }

@@ -1,9 +1,8 @@
-﻿using log4net;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System;
 using System.Text;
 using System.Web;
+using log4net;
+using Octokit;
 
 namespace Jarboo.Protoypes.GithubPuller.Helpers
 {
@@ -23,7 +22,7 @@ namespace Jarboo.Protoypes.GithubPuller.Helpers
             return sb.ToString();
         }
 
-        public static Octokit.User CurrentUser
+        public static User CurrentUser
         {
             get
             {
@@ -33,7 +32,7 @@ namespace Jarboo.Protoypes.GithubPuller.Helpers
 
                 if (currentContext.Items[Constants.Session.CurrentUser] == null) return null;
 
-                return (Octokit.User)currentContext.Items[Constants.Session.CurrentUser];
+                return (User)currentContext.Items[Constants.Session.CurrentUser];
             }
         }
 

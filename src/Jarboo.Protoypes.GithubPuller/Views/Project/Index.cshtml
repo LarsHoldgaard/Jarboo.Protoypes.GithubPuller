@@ -19,7 +19,7 @@
                             <td>@item.Name</td>
                             <td><a href="@item.GitUrl">@item.GitUrl</a></td>
                             <td>
-                                <a class="btn btn-info" href="@Url.Action("Detail", new { id = item.Id })">Detail</a>
+                                <a class="btn btn-info" href="@Url.Action("Detail", new { name = item.Name, owner = item.Owner.Login })">Detail</a>
                             </td>
                         </tr>
                     }

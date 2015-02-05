@@ -1,2 +1,4 @@
 /src/Jarboo.Protoypes.GithubPuller/obj
 /src/Jarboo.Protoypes.GithubPuller/bin
+src/packages
+src/*.suo

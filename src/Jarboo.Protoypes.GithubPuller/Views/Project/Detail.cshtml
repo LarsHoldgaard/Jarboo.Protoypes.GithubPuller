@@ -1,7 +1,39 @@
-﻿@model Jarboo.Protoypes.GithubPuller.Models.RepositoryViewModel
+﻿@model Jarboo.Protoypes.GithubPuller.Models.DetailViewModel
 
 <div class="row">
-    <div class="col-lg-12">
-        
+    <div class="col-lg-6">
+        <h2>@Model.Repository.Name</h2>
+        <h3>by @Model.Repository.Owner.Login</h3>
     </div>
 </div>
+
+@if (Model.Branches != null && Model.Branches.Any())
+{
+    <div class="row">
+        <div class="col-lg-12">
+            <h2>Branches</h2>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Branches)
+                        {
+                            <tr>
+                                <td>@item.Name</td>
+                                <td>
+                                    @Html.ActionLink("Build", "Branch", new {owner = Model.Repository.Owner.Login, repositoryName = Model.Repository.Name, name = item.Name})
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
