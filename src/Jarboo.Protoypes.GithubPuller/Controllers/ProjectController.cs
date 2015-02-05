@@ -86,8 +86,9 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 CreateApplication(packagePath, repositoryName + "-" + name, ConfigurationManager.AppSettings["DeployApplication"]);
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                _logger.Error(e);
                 result = false;
             }
 
