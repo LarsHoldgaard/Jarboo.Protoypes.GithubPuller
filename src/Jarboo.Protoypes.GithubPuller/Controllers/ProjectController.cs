@@ -73,9 +73,13 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 
                 var solutionFile = FindSolutionFile(repositoryPath);
 
+                _logger.Debug("Solution file: {0}", solutionFile);
+
                 string outputPath = Server.MapPath(Path.Combine(ConfigurationManager.AppSettings["BuildPath"], Guid.NewGuid().ToString()));
                 string solutionName = solutionFile.Replace(".sln", ""); //extracting solution name
                 string packagePath = Path.Combine(outputPath, "_PublishedWebsites", solutionName);
+
+                _logger.Debug("Package path: {0}", packagePath);
 
                 if (!Directory.Exists(outputPath))
                 {
