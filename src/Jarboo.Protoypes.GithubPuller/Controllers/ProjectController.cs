@@ -161,7 +161,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             var isSuccess = buildRequest.OverallResult == BuildResultCode.Success;
 
             _logger.Debug("Build succes: {0}", isSuccess);
-
+            
             if (!isSuccess)
             {
                 foreach (var res in buildRequest.ResultsByTarget)
@@ -177,7 +177,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
         private void CreateApplication(string path, string name, string root)
         {
             name = name.StartsWith("/") ? name : "/" + name;
-            name = name.Replace(".", "-");
+            name = name.Replace(".", "");
             using (var server = new ServerManager())
             {
                 _logger.Debug("Getting site root: {0}", root);
