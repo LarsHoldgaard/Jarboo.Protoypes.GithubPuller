@@ -61,9 +61,10 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             var basePath = Server.MapPath(ConfigurationManager.AppSettings["DownloadPath"]);
             try
             {
+                string resultDirectory = DateTime.Now.Ticks + repositoryName;
                 var repo = await _gitHubClient.Value.Repository.Get(owner, repositoryName);
 
-                var path = Path.Combine(basePath, DateTime.Now.Ticks + repositoryName);
+                var path = Path.Combine(basePath, resultDirectory);
 
                 var repositoryPath = Repository.Clone(repo.CloneUrl, path, new CloneOptions { BranchName = name, Checkout = true });
                 
@@ -71,7 +72,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 _logger.Debug("Solution file: {0}", solutionFilePath);
 
-                string outputPath = Server.MapPath(Path.Combine(ConfigurationManager.AppSettings["BuildPath"], Guid.NewGuid().ToString()));
+                string outputPath = Server.MapPath(Path.Combine(ConfigurationManager.AppSettings["BuildPath"], resultDirectory));
                 string solutionName = Path.GetFileNameWithoutExtension(solutionFilePath); //extracting solution name
                 _logger.Debug("Solution file name: {0}", solutionName);
                 
@@ -80,7 +81,9 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 string packagePath = Path.Combine(outputPath, "_PublishedWebsites", solutionName);
                 _logger.Debug("Package path: {0}", packagePath);
 
-                CreateApplication(packagePath, repositoryName + "." + name, ConfigurationManager.AppSettings["DeployApplication"]);
+                var sitePath = CreateApplication(packagePath, repositoryName + "." + name, ConfigurationManager.AppSettings["DeployApplication"]);
+
+                ViewBag.SitePath = ConfigurationManager.AppSettings["DeployApplication"] + "/" + sitePath;
             }
             catch (Exception e)
             {
@@ -175,7 +178,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             }
         }
 
-        private void CreateApplication(string path, string name, string root)
+        private string CreateApplication(string path, string name, string root)
         {
             name = name.StartsWith("/") ? name : "/" + name;
             name = name.Replace(".", "");
@@ -201,6 +204,8 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 server.CommitChanges();
 
                 _logger.Debug("Application added: {0}", name);
+
+                return name;
             }
         }
     }
