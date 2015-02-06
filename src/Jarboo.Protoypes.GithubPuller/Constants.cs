@@ -6,6 +6,8 @@
         {
             public const string CurrentUser = "CurrentUser";
             public const string CurrentConnection = "CurrentConnection";
+            public const string GithubCredentials = "GithubCredentials";
+            public const string State = "GithubState";
         }
     }
 }
