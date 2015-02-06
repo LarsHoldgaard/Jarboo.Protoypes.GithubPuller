@@ -32,7 +32,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             // 1. Redirect users to request GitHub access
             var request = new OauthLoginRequest(_clientId)
             {
-                Scopes = { "user", "notifications" },
+                Scopes = { "user", "notifications", "repo" },
                 State = csrf
             };
 

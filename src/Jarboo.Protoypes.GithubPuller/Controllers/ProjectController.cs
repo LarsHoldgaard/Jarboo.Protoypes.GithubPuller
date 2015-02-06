@@ -31,10 +31,21 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
         public async Task<ActionResult> Index()
         {
-            var repositories = await _gitHubClient.Value.Repository.GetAllForCurrent();
+            
+            var repositoriesTask = _gitHubClient.Value.Repository.GetAllForCurrent();
+            var organizationTask = _gitHubClient.Value.Organization.GetAllForCurrent();
+
+            await Task.WhenAll(repositoriesTask, organizationTask);
+
+            var organizationRepos = organizationTask.Result.Select(s => _gitHubClient.Value.Repository.GetAllForOrg(s.Login)).ToArray();
+
+            await Task.WhenAll(organizationRepos);
+
+            var repositories = repositoriesTask.Result.ToList();
+            repositories.AddRange(organizationRepos.SelectMany(s => s.Result).ToList());
             var model = new RepositoriesViewModel
             {
-                Repositories = repositories.ToList()
+                Repositories = repositories
             };
             return View(model);
         }
