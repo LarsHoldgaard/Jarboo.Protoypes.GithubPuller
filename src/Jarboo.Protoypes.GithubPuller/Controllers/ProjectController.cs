@@ -83,7 +83,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 var sitePath = CreateApplication(packagePath, repositoryName + "." + name, ConfigurationManager.AppSettings["DeployApplication"]);
 
-                ViewBag.SitePath = ConfigurationManager.AppSettings["DeployApplication"] + "/" + sitePath;
+                ViewBag.SitePath = ConfigurationManager.AppSettings["DeployApplication"] + sitePath;
             }
             catch (Exception e)
             {
