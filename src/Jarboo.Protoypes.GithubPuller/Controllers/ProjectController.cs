@@ -8,13 +8,13 @@ using System.Web.Mvc;
 using Jarboo.Protoypes.GithubPuller.Attributes;
 using Jarboo.Protoypes.GithubPuller.Models;
 using LibGit2Sharp;
+using LibGit2Sharp.Handlers;
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Execution;
 using Microsoft.Web.Administration;
 using NLog;
 using NuGetPlus;
 using Octokit;
-using Repository = LibGit2Sharp.Repository;
 
 namespace Jarboo.Protoypes.GithubPuller.Controllers
 {
@@ -66,7 +66,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             return View(model);
         }
 
-        public async Task<ActionResult> Branch(string owner, string repositoryName, string name)
+        public async Task<ActionResult> Branch(string owner, string repositoryName, string name, string username, string password)
         {
             bool result = true;
             var basePath = Server.MapPath(ConfigurationManager.AppSettings["DownloadPath"]);
@@ -74,10 +74,28 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             {
                 string resultDirectory = DateTime.Now.Ticks + repositoryName;
                 var repo = await _gitHubClient.Value.Repository.Get(owner, repositoryName);
-
+                
                 var path = Path.Combine(basePath, resultDirectory);
 
-                var repositoryPath = Repository.Clone(repo.CloneUrl, path, new CloneOptions { BranchName = name, Checkout = true });
+                var creds = new UsernamePasswordCredentials()
+                {
+                    Username = username,
+                    Password = password
+                };
+                CredentialsHandler credHandler = (_, __, cred) => creds;
+
+                /*using (var rep = new LibGit2Sharp.Repository(path))
+                {
+                    var remote = rep.Network.Remotes.Add(name, repo.CloneUrl);
+                    rep.Network.Fetch(remote, fetchOpts);
+                }*/
+
+                var repositoryPath = LibGit2Sharp.Repository.Clone(repo.CloneUrl, path, new CloneOptions
+                {
+                    BranchName = name, 
+                    Checkout = true,
+                    CredentialsProvider = credHandler
+                });
                 
                 var solutionFilePath = FindSolutionPath(repositoryPath);
 
