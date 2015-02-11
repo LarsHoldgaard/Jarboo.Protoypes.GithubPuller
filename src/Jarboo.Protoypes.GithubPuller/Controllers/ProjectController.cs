@@ -211,7 +211,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
         private string CreateApplication(string path, string name, string root)
         {
             name = name.StartsWith("/") ? name : "/" + name;
-            name = name.Replace(".", "");
+            name = name.Replace(".", "").Replace(@"/", "");
             using (var server = new ServerManager())
             {
                 _logger.Debug("Getting site root: {0}", root);
