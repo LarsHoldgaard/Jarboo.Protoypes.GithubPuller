@@ -34,8 +34,7 @@
                                         @Html.Hidden("repositoryName", Model.Repository.Name)
                                         <input type="hidden" name="name" value="@item.Name"/>
                                         
-                                        <input type="text" name="username" placeholder="Username"/>
-                                        <input type="password" name="password" placeholder="Password"/>
+                                        <input type="text" name="solutionName" placeholder="solutionName"/>
                                         <input type="submit" value="Build"/>
                                     }
                                     @*@Html.ActionLink("Build", "Branch", new {owner = Model.Repository.Owner.Login, repositoryName = Model.Repository.Name, name = item.Name})*@

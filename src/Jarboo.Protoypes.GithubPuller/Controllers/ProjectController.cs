@@ -23,6 +23,8 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
     {
         private readonly Lazy<GitHubClient> _gitHubClient;
         readonly Logger _logger = LogManager.GetCurrentClassLogger();
+        private readonly string _githubUsername = ConfigurationManager.AppSettings["GithubUsername"];
+        private readonly string _githubPassword = ConfigurationManager.AppSettings["GithubPassword"];
 
         public ProjectController()
         {
@@ -66,7 +68,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             return View(model);
         }
 
-        public async Task<ActionResult> Branch(string owner, string repositoryName, string name, string username, string password)
+        public async Task<ActionResult> Branch(string owner, string repositoryName, string name, string solutionName)
         {
             bool result = true;
             var basePath = Server.MapPath(ConfigurationManager.AppSettings["DownloadPath"]);
@@ -79,17 +81,11 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 var creds = new UsernamePasswordCredentials()
                 {
-                    Username = username,
-                    Password = password
+                    Username = _githubUsername,
+                    Password = _githubPassword
                 };
                 CredentialsHandler credHandler = (_, __, cred) => creds;
-
-                /*using (var rep = new LibGit2Sharp.Repository(path))
-                {
-                    var remote = rep.Network.Remotes.Add(name, repo.CloneUrl);
-                    rep.Network.Fetch(remote, fetchOpts);
-                }*/
-
+                
                 var repositoryPath = LibGit2Sharp.Repository.Clone(repo.CloneUrl, path, new CloneOptions
                 {
                     BranchName = name, 
@@ -97,12 +93,16 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                     CredentialsProvider = credHandler
                 });
                 
-                var solutionFilePath = FindSolutionPath(repositoryPath);
+                var solutionFilePath = FindSolutionPath(repositoryPath, solutionName);
 
                 _logger.Debug("Solution file: {0}", solutionFilePath);
 
                 string outputPath = Server.MapPath(Path.Combine(ConfigurationManager.AppSettings["BuildPath"], resultDirectory));
-                string solutionName = Path.GetFileNameWithoutExtension(solutionFilePath); //extracting solution name
+                if (string.IsNullOrEmpty(solutionName))
+                {
+                    solutionName = Path.GetFileNameWithoutExtension(solutionFilePath); //extracting solution name
+                }
+                
                 _logger.Debug("Solution file name: {0}", solutionName);
                 
                 Build(solutionFilePath, outputPath, null);
@@ -123,10 +123,11 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             return View(result);
         }
 
-        private string FindSolutionPath(string path)
+        private string FindSolutionPath(string path, string solutionName)
         {
             var parent = Directory.GetParent(path).Parent;
-            FileInfo[] files = parent.GetFiles("*.sln", SearchOption.AllDirectories);
+            string searchPattern = string.IsNullOrEmpty(solutionName) ? "*.sln" : solutionName;
+            FileInfo[] files = parent.GetFiles(searchPattern, SearchOption.AllDirectories);
 
             if (!files.Any())
             {
