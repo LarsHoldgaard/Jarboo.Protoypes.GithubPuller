@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,6 +12,8 @@ using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Execution;
+using Microsoft.Build.Framework;
+using Microsoft.Build.Logging;
 using Microsoft.Web.Administration;
 using NLog;
 using NuGetPlus;
@@ -25,6 +28,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
         readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private readonly string _githubUsername = ConfigurationManager.AppSettings["GithubUsername"];
         private readonly string _githubPassword = ConfigurationManager.AppSettings["GithubPassword"];
+        private string _buildOutput = string.Empty;
 
         public ProjectController()
         {
@@ -99,7 +103,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 string outputPath = Server.MapPath(Path.Combine(ConfigurationManager.AppSettings["BuildPath"], resultDirectory));
                 
-                solutionName = Path.GetFileNameWithoutExtension(solutionFilePath); //extracting solution name
+//                solutionName = Path.GetFileNameWithoutExtension(solutionFilePath); //extracting solution name
                 
                 
                 _logger.Debug("Solution file name: {0}", solutionName);
@@ -119,6 +123,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 result = false;
             }
 
+            ViewBag.BuildOutput = _buildOutput;
             return View(result);
         }
 
@@ -147,7 +152,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             _logger.Debug("Restoring packages");
             _logger.Debug("Solution path: {0}", solutionPath);
 
-            try
+            /*try
             {
                 NuGetPlus.SolutionManagement.RestorePackages(solutionPath);
             }
@@ -163,7 +168,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             {
                 _logger.Debug("Package {0}, id: {1}, version {2}", package.Item1.Item, package.Item2.Id, package.Item2.Version);
                 RepositoryManagement.RestorePackage a = new NuGetPlus.RepositoryManagement.RestorePackage(package.Item2.Id, package.Item2.Version);
-            }
+            }*/
 
             _logger.Debug("Packages restored");
 
@@ -186,9 +191,30 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 {"DeployOnBuild", "true"},
                 {"OutputPath", outputPath}
             };
-            var buildRequestData = new BuildRequestData(solutionPath, properties, null, targets, null);
 
-            var buildParameters = new BuildParameters(projectCollection);
+            var p = new Process
+            {
+                StartInfo = new ProcessStartInfo(@"C:\Windows\Microsoft.NET\Framework\v4.0.30319\msbuild.exe")
+                {
+                    Arguments =
+                        string.Format(
+                            @"""{2}"" /P:Configuration={0} /p:VisualStudioVersion=12.0  /P:DeployOnBuild=true /P:OutputPath=""{1}"" /P:Platform=""{3}""",
+                            configuration, outputPath  + @"\\", solutionPath, platform),
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false
+                }
+            };
+
+            p.Start();
+            _buildOutput = p.StandardOutput.ReadToEnd();
+            p.WaitForExit();
+            
+
+            var buildRequestData = new BuildRequestData(solutionPath, properties, null, targets, null);
+            var logger = new FileLogger();
+            
+            var buildParameters = new BuildParameters(projectCollection) { Loggers = new List<ILogger> { logger } };
+//            buildParameters.l
 
             var buildRequest = BuildManager.DefaultBuildManager.Build(buildParameters, buildRequestData);
             var isSuccess = buildRequest.OverallResult == BuildResultCode.Success;
@@ -206,6 +232,7 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 }
             }
         }
+
 
         private string CreateApplication(string path, string name, string root)
         {
