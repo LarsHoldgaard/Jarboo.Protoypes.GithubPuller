@@ -64,7 +64,7 @@ namespace Jarboo.Protoypes.GithubPuller.Services
             };
 
             p.Start();
-            buildOutput = p.StandardOutput.ReadToEnd();
+            string buildOutput = p.StandardOutput.ReadToEnd();
             p.WaitForExit();
 
             return buildOutput;
