@@ -1,22 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Configuration;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Mvc;
 using Jarboo.Protoypes.GithubPuller.Attributes;
 using Jarboo.Protoypes.GithubPuller.Models;
-using LibGit2Sharp;
-using LibGit2Sharp.Handlers;
-using Microsoft.Build.Evaluation;
-using Microsoft.Build.Execution;
-using Microsoft.Build.Framework;
-using Microsoft.Build.Logging;
-using Microsoft.Web.Administration;
+using Jarboo.Protoypes.GithubPuller.Services;
 using NLog;
-using NuGetPlus;
 using Octokit;
 
 namespace Jarboo.Protoypes.GithubPuller.Controllers
@@ -26,13 +17,17 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
     {
         private readonly Lazy<GitHubClient> _gitHubClient;
         readonly Logger _logger = LogManager.GetCurrentClassLogger();
-        private readonly string _githubUsername = ConfigurationManager.AppSettings["GithubUsername"];
-        private readonly string _githubPassword = ConfigurationManager.AppSettings["GithubPassword"];
-        private string _buildOutput = string.Empty;
+
+        private readonly RepositoryService _repositoryService;
+        private readonly BuildService _buildService;
+        private readonly DeployService _deployService;
 
         public ProjectController()
         {
             _gitHubClient = new Lazy<GitHubClient>(() => new GitHubClient(CurrentConnection));
+            _repositoryService = new RepositoryService();
+            _buildService = new BuildService();
+            _deployService = new DeployService();
         }
 
         public async Task<ActionResult> Index()
@@ -72,50 +67,71 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             return View(model);
         }
 
-        public async Task<ActionResult> Branch(string owner, string repositoryName, string name, string solutionName)
+        public ActionResult UpdateDependencies()
         {
-            bool result = true;
+            return View();
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public ActionResult UpdateDependencies(string url, string branch)
+        {
+            var path = Path.Combine(Server.MapPath(ConfigurationManager.AppSettings["DownloadPath"]), "Saxo.Dependencies");
+
+            _repositoryService.RemoveRepositoryFolder(path);
+
+            _repositoryService.Clone(path, url, branch);
+
+            return RedirectToAction("Index");
+        }
+
+        public async Task<ActionResult> CheckoutBranch(string owner, string repositoryName, string branch, string pattern = "*.build")
+        {
             var basePath = Server.MapPath(ConfigurationManager.AppSettings["DownloadPath"]);
+            string resultDirectory = DateTime.Now.Ticks + repositoryName;
+            var path = Path.Combine(basePath, resultDirectory);
+
+            var repository = await _gitHubClient.Value.Repository.Get(owner, repositoryName);
+            var repositoryPath = _repositoryService.Clone(path, repository.CloneUrl, branch);
+
+            string[] filePaths = _repositoryService.FindBuildFiles(repositoryPath, pattern);
+
+            var model = new CheckoutBranchViewModel
+            {
+                BuildFilePaths = filePaths,
+                OutputDirectoryName = resultDirectory,
+                RepositoryName = repositoryName,
+                Branch = branch,
+                RepositoryPath = repositoryPath
+            };
+
+            return View(model);
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public ActionResult Build(string buildFilePath, string outputDirectoryName, string repositoryName, string branch, string repositoryPath)
+        {
+            bool result;
+            string buildOutput = string.Empty;
+            
             try
             {
-                string resultDirectory = DateTime.Now.Ticks + repositoryName;
-                var repo = await _gitHubClient.Value.Repository.Get(owner, repositoryName);
-                
-                var path = Path.Combine(basePath, resultDirectory);
+                string outputPath = Path.Combine(Server.MapPath(ConfigurationManager.AppSettings["BuildPath"]), outputDirectoryName);
 
-                var creds = new UsernamePasswordCredentials()
+                buildOutput = _buildService.Build(buildFilePath, outputPath);
+
+                result = buildOutput.Contains("0 Error(s)");
+
+                _repositoryService.RemoveRepositoryFolder(repositoryPath);
+
+                if (result)
                 {
-                    Username = _githubUsername,
-                    Password = _githubPassword
-                };
-                CredentialsHandler credHandler = (_, __, cred) => creds;
-                
-                var repositoryPath = LibGit2Sharp.Repository.Clone(repo.CloneUrl, path, new CloneOptions
-                {
-                    BranchName = name, 
-                    Checkout = true,
-                    CredentialsProvider = credHandler
-                });
-                
-                var solutionFilePath = FindSolutionPath(repositoryPath, solutionName);
+                    var sitePath = _deployService.DeployApplication(repositoryName + "." + branch, outputPath);
 
-                _logger.Debug("Solution file: {0}", solutionFilePath);
+                    ViewBag.SitePath = ConfigurationManager.AppSettings["DeployApplication"] + sitePath;
+                }
 
-                string outputPath = Server.MapPath(Path.Combine(ConfigurationManager.AppSettings["BuildPath"], resultDirectory));
-                
-//                solutionName = Path.GetFileNameWithoutExtension(solutionFilePath); //extracting solution name
-                
-                
-                _logger.Debug("Solution file name: {0}", solutionName);
-                
-                Build(solutionFilePath, outputPath, null);
-
-                string packagePath = Path.Combine(outputPath, "_PublishedWebsites", solutionName);
-                _logger.Debug("Package path: {0}", packagePath);
-
-                var sitePath = CreateApplication(packagePath, repositoryName + "." + name, ConfigurationManager.AppSettings["DeployApplication"]);
-
-                ViewBag.SitePath = ConfigurationManager.AppSettings["DeployApplication"] + sitePath;
             }
             catch (Exception e)
             {
@@ -123,146 +139,8 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
                 result = false;
             }
 
-            ViewBag.BuildOutput = _buildOutput;
+            ViewBag.BuildOutput = buildOutput;
             return View(result);
-        }
-
-        private string FindSolutionPath(string path, string solutionName)
-        {
-            var parent = Directory.GetParent(path).Parent;
-            string searchPattern = string.IsNullOrEmpty(solutionName) ? "*.sln" : solutionName;
-            FileInfo[] files = parent.GetFiles(searchPattern, SearchOption.AllDirectories);
-
-            if (!files.Any())
-            {
-                return null;
-            }
-
-            var solutionFile = files.First();
-            return Path.Combine(solutionFile.DirectoryName, solutionFile.Name);
-        }
-
-        private void Build(string solutionPath, string outputPath, string[] targets, string configuration = "Release", string platform = "Any CPU")
-        {
-            _logger.Debug("Start building");
-            if (targets == null || !targets.Any())
-            {
-                targets = new[] { "Build" };
-            }
-            _logger.Debug("Restoring packages");
-            _logger.Debug("Solution path: {0}", solutionPath);
-
-            /*try
-            {
-                NuGetPlus.SolutionManagement.RestorePackages(solutionPath);
-            }
-            catch (Exception e)
-            {
-                _logger.Debug("Error when running restore command");
-                _logger.Debug(e);
-            }
-
-            _logger.Debug("Get restore packages");
-            var packages = NuGetPlus.SolutionManagement.GetRestorePackages(solutionPath);
-            foreach (var package in packages)
-            {
-                _logger.Debug("Package {0}, id: {1}, version {2}", package.Item1.Item, package.Item2.Id, package.Item2.Version);
-                RepositoryManagement.RestorePackage a = new NuGetPlus.RepositoryManagement.RestorePackage(package.Item2.Id, package.Item2.Version);
-            }*/
-
-            _logger.Debug("Packages restored");
-
-            if (Directory.Exists(outputPath))
-            {
-                Directory.Delete(outputPath, true);
-            }
-
-            if (!Directory.Exists(outputPath))
-            {
-                Directory.CreateDirectory(outputPath);
-            }
-
-            var projectCollection = new ProjectCollection();
-
-            var properties = new Dictionary<string, string> 
-            { 
-                { "Configuration", configuration }, 
-                { "Platform", platform }, 
-                {"DeployOnBuild", "true"},
-                {"OutputPath", outputPath}
-            };
-
-            var p = new Process
-            {
-                StartInfo = new ProcessStartInfo(@"C:\Windows\Microsoft.NET\Framework\v4.0.30319\msbuild.exe")
-                {
-                    Arguments =
-                        string.Format(
-                            @"""{2}"" /P:Configuration={0} /p:VisualStudioVersion=12.0  /P:DeployOnBuild=true /P:OutputPath=""{1}"" /P:Platform=""{3}""",
-                            configuration, outputPath  + @"\\", solutionPath, platform),
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false
-                }
-            };
-
-            p.Start();
-            _buildOutput = p.StandardOutput.ReadToEnd();
-            p.WaitForExit();
-            
-
-            var buildRequestData = new BuildRequestData(solutionPath, properties, null, targets, null);
-            var logger = new FileLogger();
-            
-            var buildParameters = new BuildParameters(projectCollection) { Loggers = new List<ILogger> { logger } };
-//            buildParameters.l
-
-            var buildRequest = BuildManager.DefaultBuildManager.Build(buildParameters, buildRequestData);
-            var isSuccess = buildRequest.OverallResult == BuildResultCode.Success;
-
-            _logger.Debug("Build succes: {0}", isSuccess);
-            
-            if (!isSuccess)
-            {
-                foreach (var res in buildRequest.ResultsByTarget)
-                {
-                    _logger.Debug("Result key: {0}", res.Key);
-                    _logger.Debug("REsult code: {0}", res.Value.ResultCode);
-                    _logger.Debug("Result exception: ");
-                    _logger.Debug(res.Value.Exception);
-                }
-            }
-        }
-
-
-        private string CreateApplication(string path, string name, string root)
-        {
-            name = name.StartsWith("/") ? name : "/" + name;
-            name = name.Replace(".", "").Replace(@"/", "");
-            using (var server = new ServerManager())
-            {
-                _logger.Debug("Getting site root: {0}", root);
-                Site site = server.Sites.First(w => w.Name == root);
-
-                var existingApplications = site.Applications.Where(a => a.Path == name).ToList();
-                _logger.Debug("Existing applications for {0}: {1}", name, existingApplications.Count());
-
-                //removing sites with this name if they exist
-                foreach (var existing in existingApplications)
-                {
-                    site.Applications.Remove(existing);
-                }
-
-//                server.CommitChanges();
-
-                _logger.Debug("Adding application {0}, path: {1}", name, path);
-                site.Applications.Add(name, path);
-
-                server.CommitChanges();
-
-                _logger.Debug("Application added: {0}", name);
-
-                return name;
-            }
         }
     }
 }

@@ -211,10 +211,14 @@
     </Compile>
     <Compile Include="Helpers\AsyncHelper.cs" />
     <Compile Include="Helpers\SecurityHelper.cs" />
+    <Compile Include="Models\CheckoutBranchViewModel.cs" />
     <Compile Include="Models\DetailViewModel.cs" />
     <Compile Include="Models\LoginViewModel.cs" />
     <Compile Include="Models\RepositoriesViewModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\BuildService.cs" />
+    <Compile Include="Services\DeployService.cs" />
+    <Compile Include="Services\RepositoryService.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assemblies\FSharp.Core.dll" />
@@ -264,7 +268,9 @@
     <Content Include="Views\Shared\_LoginPartial.cshtml" />
     <Content Include="Views\Project\Index.cshtml" />
     <Content Include="Views\Project\Detail.cshtml" />
-    <Content Include="Views\Project\Branch.cshtml" />
+    <Content Include="Views\Project\Build.cshtml" />
+    <Content Include="Views\Project\UpdateDependencies.cshtml" />
+    <Content Include="Views\Project\CheckoutBranch.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

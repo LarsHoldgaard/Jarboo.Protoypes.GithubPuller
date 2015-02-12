@@ -28,14 +28,13 @@
                             <tr>
                                 <td>@item.Name</td>
                                 <td>
-                                    @using (Html.BeginForm("Branch", "Project", FormMethod.Post))
+                                    @using (Html.BeginForm("CheckoutBranch", "Project", FormMethod.Get))
                                     {
                                         @Html.Hidden("owner", Model.Repository.Owner.Login)
                                         @Html.Hidden("repositoryName", Model.Repository.Name)
-                                        <input type="hidden" name="name" value="@item.Name"/>
+                                        <input type="hidden" name="branch" value="@item.Name"/>
                                         
-                                        <input type="text" name="solutionName" placeholder="solutionName"/>
-                                        <input type="submit" value="Build"/>
+                                        <input type="submit" class="btn btn-primary" value="Checkout"/>
                                     }
                                     @*@Html.ActionLink("Build", "Branch", new {owner = Model.Repository.Owner.Login, repositoryName = Model.Repository.Name, name = item.Name})*@
                                 </td>

@@ -1,0 +1,32 @@
+﻿@model Jarboo.Protoypes.GithubPuller.Models.CheckoutBranchViewModel
+@{
+    ViewBag.Title = "CheckoutBranch";
+}
+
+<div class="row">
+    <div class="col-lg-6">
+        @using (Html.BeginForm("Build", "Project", FormMethod.Post, new { role = "form" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(h => h.OutputDirectoryName)
+            @Html.HiddenFor(h => h.RepositoryName)
+            @Html.HiddenFor(h => h.Branch)
+            @Html.HiddenFor(h => h.RepositoryPath)
+            <div class="form-group">
+                <label>Choose build file</label>
+                <select class="form-control" name="buildFilePath">
+                    @foreach (var path in Model.BuildFilePaths)
+                    {
+                        <option value="@path">@Path.GetFileNameWithoutExtension(path)</option>
+                    }
+                </select>
+            </div>
+            <div class="row">
+                <div class="col-sm-6">
+                    <button type="submit" class="btn btn-primary" style="margin-bottom: 20px;">Build</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
