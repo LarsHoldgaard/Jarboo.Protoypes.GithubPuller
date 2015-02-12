@@ -17,7 +17,7 @@
                 <select class="form-control" name="buildFilePath">
                     @foreach (var path in Model.BuildFilePaths)
                     {
-                        <option value="@path">@Path.GetFileNameWithoutExtension(path)</option>
+                        <option value="@path">@Path.GetFileName(path)</option>
                     }
                 </select>
             </div>

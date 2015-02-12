@@ -15,8 +15,6 @@ namespace Jarboo.Protoypes.GithubPuller.Services
 
         public string Build(string buildFilePath, string outputPath, string configuration = "Release", string platform = "Any CPU")
         {
-            string buildOutput = string.Empty;
-            
             /*bool restorePackages = false;
 
             if (restorePackages)
