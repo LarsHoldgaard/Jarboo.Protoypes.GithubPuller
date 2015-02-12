@@ -14,7 +14,7 @@ namespace Jarboo.Protoypes.GithubPuller.Services
             name = name.StartsWith("/") ? name : "/" + name;
             name = name.Replace(".", "").Replace(@"/", "");
             _logger.Debug("Output path: {0}", path);
-            _logger.Debug("App name: {1}", name);
+            _logger.Debug("App name: {0}", name);
             using (var server = new ServerManager())
             {
                 Site site = server.Sites.First(w => w.Name == _rootApplication);
@@ -27,7 +27,7 @@ namespace Jarboo.Protoypes.GithubPuller.Services
                     site.Applications.Remove(existing);
                 }
 
-                site.Applications.Add(name, path);
+                site.Applications.Add(name, path + @"\");
 
                 server.CommitChanges();
             }
