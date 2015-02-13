@@ -117,7 +117,8 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
             
             try
             {
-                string outputPath = Path.Combine(Server.MapPath(ConfigurationManager.AppSettings["BuildPath"]), outputDirectoryName);
+                
+                string outputPath = Path.Combine(Server.MapPath(ConfigurationManager.AppSettings["BuildPath"]), outputDirectoryName, "Web");
 
                 buildOutput = _buildService.Build(buildFilePath, outputPath);
 
