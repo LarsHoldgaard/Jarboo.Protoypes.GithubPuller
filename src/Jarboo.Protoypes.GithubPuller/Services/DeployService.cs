@@ -13,6 +13,7 @@ namespace Jarboo.Protoypes.GithubPuller.Services
         {
             name = name.StartsWith("/") ? name : "/" + name;
             name = name.Replace(".", "").Replace(@"/", "");
+            path = path.Replace(@"\", @"\\");
             _logger.Debug("Output path: {0}", path);
             _logger.Debug("App name: {0}", name);
             using (var server = new ServerManager())
