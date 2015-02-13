@@ -27,7 +27,7 @@ namespace Jarboo.Protoypes.GithubPuller.Services
                     site.Applications.Remove(existing);
                 }
 
-                site.Applications.Add(name, path + @"\");
+                site.Applications.Add(name, path);
 
                 server.CommitChanges();
             }

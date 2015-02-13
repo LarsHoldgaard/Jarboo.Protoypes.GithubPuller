@@ -124,6 +124,8 @@ namespace Jarboo.Protoypes.GithubPuller.Controllers
 
                 result = buildOutput.Contains("0 Error(s)");
 
+                _logger.Debug("Build result: {0}", result);
+                _logger.Debug("Removing folder from path: {0}", repositoryPath);
                 _repositoryService.RemoveRepositoryFolder(repositoryPath);
 
                 if (result)
