@@ -12,8 +12,8 @@ namespace Jarboo.Protoypes.GithubPuller.Services
         public string DeployApplication(string name, string path)
         {
             name = name.StartsWith("/") ? name : "/" + name;
-            name = name.Replace(".", "").Replace(@"/", "");
-            path = path + @"\";
+            name = name.Replace(".", "").Replace(@"/", "").Replace("-", "").ToLowerInvariant();
+//            path = path + @"\";
 //            path = @"D:\sites\githubpuller.jarboo.com\Downloads\635594332589268911Saxo.Websites.Tools\Web";
             _logger.Debug("Output path: {0}", path);
             _logger.Debug("App name: {0}", name);
