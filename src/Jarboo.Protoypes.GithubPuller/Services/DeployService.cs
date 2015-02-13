@@ -19,8 +19,10 @@ namespace Jarboo.Protoypes.GithubPuller.Services
             {
                 Site site = server.Sites.First(w => w.Name == _rootApplication);
 
+                _logger.Debug("Site found: {0}", site.Name);
                 var existingApplications = site.Applications.Where(a => a.Path == name).ToList();
 
+                _logger.Debug("Existing applications: {0}", existingApplications.Count);
                 //removing sites with this name if they exist
                 foreach (var existing in existingApplications)
                 {
